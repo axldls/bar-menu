@@ -95,7 +95,8 @@ export default function BarMenu() {
 
     async function cargarProductos() {
       try {
-        const response = await fetch("https://bar-admin.onrender.com/productos", {
+        const response = await fetch(`https://bar-admin.onrender.com/productos?_=${Date.now()}`, {
+          cache: "no-store",
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("No se pudieron cargar los productos");
@@ -116,7 +117,7 @@ export default function BarMenu() {
     }
 
     cargarProductos();
-    const intervalo = window.setInterval(cargarProductos, 30000);
+    const intervalo = window.setInterval(cargarProductos, 5000);
     window.addEventListener("focus", cargarProductos);
 
     return () => {
