@@ -13,17 +13,43 @@ const CATEGORIAS = [
 
 function normalizarProducto(producto) {
   const categoria = producto.categoria ?? producto.category;
+  const categoriaNormalizada = String(categoria)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_]+/g, "-");
+  const aliasCategorias = {
+    "bebidas-sin-alcohol": "bebidas-sin-alcohol",
+    "sin-alcohol": "bebidas-sin-alcohol",
+  };
+  const categoriaId = aliasCategorias[categoriaNormalizada] ?? categoriaNormalizada;
   const categoriaEncontrada = CATEGORIAS.find(
-    (item) => item.id === categoria || item.label.toLowerCase() === String(categoria).toLowerCase(),
+    (item) => item.id === categoriaId || item.label.toLowerCase() === String(categoria).toLowerCase(),
   );
 
   return {
     nombre: producto.nombre ?? producto.name,
     descripcion: producto.descripcion ?? producto.shortDesc,
     precio: Number(producto.precio ?? producto.price),
-    categoria: categoriaEncontrada?.id ?? categoria,
+    categoria: categoriaEncontrada?.id ?? categoriaId,
+    categoriaLabel: categoriaEncontrada?.label ?? String(categoria),
     imagen_url: producto.imagen_url ?? producto.image,
   };
+}
+
+function construirCategorias(productos) {
+  const categorias = [...CATEGORIAS];
+
+  productos.forEach((producto) => {
+    if (!producto.categoria || categorias.some((categoria) => categoria.id === producto.categoria)) return;
+    categorias.push({
+      id: producto.categoria,
+      label: producto.categoriaLabel || producto.categoria,
+      icon: PlateIcon,
+    });
+  });
+
+  return categorias.filter((categoria) => productos.some((producto) => producto.categoria === categoria.id));
 }
 
 function GlassIcon(props) {
@@ -89,6 +115,7 @@ export default function BarMenu() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const refs = useRef({});
+  const categoriasVisibles = construirCategorias(productos);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -275,7 +302,7 @@ export default function BarMenu() {
 
         <nav className="bm-nav sticky top-0 z-10 px-4 py-4">
           <div className="flex gap-4 justify-center flex-wrap max-w-3xl mx-auto">
-            {CATEGORIAS.map((cat) => {
+            {categoriasVisibles.map((cat) => {
               const Icon = cat.icon;
               const isActive = activa === cat.id;
               return (
@@ -289,7 +316,7 @@ export default function BarMenu() {
         </nav>
 
         <main className="max-w-4xl mx-auto px-6 py-10">
-          {!cargando && !error && CATEGORIAS.map((cat, idx) => {
+          {!cargando && !error && categoriasVisibles.map((cat, idx) => {
             const tieneProductos = productos.some((product) => product.categoria === cat.id);
             if (!tieneProductos) return null;
             const Icon = cat.icon;
@@ -311,7 +338,7 @@ export default function BarMenu() {
                           <p className="text-sm mt-1 leading-snug" style={{ color: "var(--muted)" }}>{product.descripcion}</p>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-[10px] uppercase tracking-wide bm-heading" style={{ color: "var(--accent-dark)" }}>{product.categoria}</span>
+                          <span className="text-[10px] uppercase tracking-wide bm-heading" style={{ color: "var(--accent-dark)" }}>{product.categoriaLabel}</span>
                           <span className="bm-price flex items-center gap-1 text-sm font-semibold pl-3 pr-2 py-1"><span className="bm-price-hole" />${formatPrecio(product.precio)}</span>
                         </div>
                       </div>
