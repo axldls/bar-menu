@@ -136,6 +136,7 @@ export default function BarMenu() {
       } catch (fetchError) {
         if (fetchError.name !== "AbortError") {
           console.error("Error cargando productos", fetchError);
+          setProductos([]);
           setError(true);
         }
       } finally {
