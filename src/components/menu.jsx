@@ -91,21 +91,39 @@ export default function BarMenu() {
   const refs = useRef({});
 
   useEffect(() => {
-    fetch("https://bar-admin.onrender.com/productos")
-      .then((response) => {
+    const controller = new AbortController();
+
+    async function cargarProductos() {
+      try {
+        const response = await fetch("https://bar-admin.onrender.com/productos", {
+          signal: controller.signal,
+        });
         if (!response.ok) throw new Error("No se pudieron cargar los productos");
-        return response.json();
-      })
-      .then((data) => {
+
+        const data = await response.json();
         if (!Array.isArray(data)) throw new Error("La respuesta no es una lista");
+
         setProductos(data.map(normalizarProducto));
+        setError(false);
+      } catch (fetchError) {
+        if (fetchError.name !== "AbortError") {
+          console.error("Error cargando productos", fetchError);
+          setError(true);
+        }
+      } finally {
         setCargando(false);
-      })
-      .catch((fetchError) => {
-        console.error("Error cargando productos", fetchError);
-        setError(true);
-        setCargando(false);
-      });
+      }
+    }
+
+    cargarProductos();
+    const intervalo = window.setInterval(cargarProductos, 30000);
+    window.addEventListener("focus", cargarProductos);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(intervalo);
+      window.removeEventListener("focus", cargarProductos);
+    };
   }, []);
 
   function irACategoria(id) {
