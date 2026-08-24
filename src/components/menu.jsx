@@ -86,18 +86,25 @@ function formatPrecio(value) {
 export default function BarMenu() {
   const [activa, setActiva] = useState(null);
   const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
   const refs = useRef({});
 
   useEffect(() => {
-    fetch("http://localhost:3000/productos")
+    fetch("https://bar-admin.onrender.com/productos")
       .then((response) => {
         if (!response.ok) throw new Error("No se pudieron cargar los productos");
         return response.json();
       })
-      .then((data) => setProductos(data.map(normalizarProducto)))
-      .catch((error) => {
-        console.error("Error cargando productos", error);
-        setProductos([]);
+      .then((data) => {
+        if (!Array.isArray(data)) throw new Error("La respuesta no es una lista");
+        setProductos(data.map(normalizarProducto));
+        setCargando(false);
+      })
+      .catch((fetchError) => {
+        console.error("Error cargando productos", fetchError);
+        setError(true);
+        setCargando(false);
       });
   }, []);
 
@@ -129,6 +136,8 @@ export default function BarMenu() {
         .bar-menu-root *, .bar-menu-root *::before, .bar-menu-root *::after { box-sizing: border-box; }
         .bar-menu-root button { font: inherit; cursor: pointer; }
         .bar-menu-root h1, .bar-menu-root h2, .bar-menu-root h3, .bar-menu-root p { margin: 0; }
+        .bm-status { padding: 16px 24px; color: var(--accent); text-align: center; font-family: 'Oswald', sans-serif; }
+        .bm-status-error { color: #e58a72; }
         .bm-display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.04em; }
         .bm-heading { font-family: 'Oswald', sans-serif; }
         .bm-hero {
@@ -237,6 +246,8 @@ export default function BarMenu() {
       `}</style>
 
       <div className="bar-menu-root">
+        {cargando && <p className="bm-status">Cargando productos...</p>}
+        {error && <p className="bm-status bm-status-error">Error al cargar productos</p>}
         <header className="bm-hero px-6 py-14 text-center">
           <p className="bm-heading text-xs tracking-[0.3em] uppercase" style={{ color: "var(--accent)" }}>Carta</p>
           <h1 className="bm-display text-6xl md:text-7xl mt-2" style={{ color: "var(--cream)" }}>El Rincón</h1>
@@ -259,9 +270,9 @@ export default function BarMenu() {
         </nav>
 
         <main className="max-w-4xl mx-auto px-6 py-10">
-          {CATEGORIAS.map((cat, idx) => {
-            const items = productos.filter((product) => product.categoria === cat.id);
-            if (items.length === 0) return null;
+          {!cargando && !error && CATEGORIAS.map((cat, idx) => {
+            const tieneProductos = productos.some((product) => product.categoria === cat.id);
+            if (!tieneProductos) return null;
             const Icon = cat.icon;
             return (
               <section key={cat.id} ref={(element) => (refs.current[cat.id] = element)} className="scroll-mt-28 mb-14">
@@ -272,7 +283,7 @@ export default function BarMenu() {
                 {cat.subtitulo && <p className="bm-section-subtitle">{cat.subtitulo}</p>}
                 <div className="bm-divider mb-6" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {items.map((product) => (
+                  {productos.map((product) => product.categoria === cat.id && (
                     <article key={product.id} className="bm-card rounded-lg overflow-hidden flex">
                       <img src={product.imagen_url} alt={product.nombre} className="w-28 h-28 object-cover flex-shrink-0" />
                       <div className="p-3 flex flex-col justify-between flex-1 min-w-0">
